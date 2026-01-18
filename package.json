@@ -1,6 +1,6 @@
 {
-  "name": "dinnermoney",
-  "displayName": "Lunch Money Budget Enhancer",
+  "name": "budget-notes",
+  "displayName": "Lunch Money Budget Notes",
   "version": "0.1.0",
   "description": "Chrome extension that enhances Lunch Money budget view with notes and itemized breakdowns",
   "type": "module",

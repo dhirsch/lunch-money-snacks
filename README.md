@@ -1,4 +1,4 @@
-# Lunch Money Budget Enhancer
+# Lunch Money Budget Notes
 
 A Chrome extension that enhances the Lunch Money budget view by allowing users to add detailed notes and itemized breakdowns to budget line items.
 
