@@ -10,4 +10,4 @@ type ExtensionGlobals = typeof globalThis & {
 const globalBrowser = (globalThis as ExtensionGlobals).browser;
 const globalChrome = (globalThis as ExtensionGlobals).chrome;
 
-export const extensionApi = (globalBrowser ?? browser ?? globalChrome)!;
+export const extensionApi = (globalBrowser ?? globalChrome ?? browser)!;
