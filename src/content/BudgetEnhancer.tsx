@@ -2,8 +2,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { BudgetModal } from '../components/Modal/BudgetModal';
 import { BudgetIcon } from '../components/Icon/BudgetIcon';
+import { PeriodSummaryCard } from '../components/PeriodSummary/PeriodSummaryCard';
 import { useMonthDetector } from './hooks/useMonthDetector';
 import { useBudgetRows } from './hooks/useBudgetRows';
+import { useBudgetTotals } from './hooks/useBudgetTotals';
+import { useSidebarContainer } from './hooks/useSidebarContainer';
 import { getLineData } from '../storage/storage';
 
 interface ModalState {
@@ -16,6 +19,8 @@ interface ModalState {
 export function BudgetEnhancer() {
   const currentMonth = useMonthDetector();
   const budgetRows = useBudgetRows();
+  const budgetTotals = useBudgetTotals();
+  const sidebarContainer = useSidebarContainer();
   const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,
     category: '',
@@ -129,6 +134,17 @@ export function BudgetEnhancer() {
           onInsertTotal={handleInsertTotal}
         />
       )}
+
+      {/* Period Summary Card in sidebar */}
+      {sidebarContainer &&
+        budgetTotals &&
+        createPortal(
+          <PeriodSummaryCard
+            expectedInflow={budgetTotals.expectedInflow}
+            budgetedOutflow={budgetTotals.budgetedOutflow}
+          />,
+          sidebarContainer
+        )}
     </>
   );
 }
