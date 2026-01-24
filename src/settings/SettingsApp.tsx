@@ -1,13 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CategoryManager } from '../components/Settings/CategoryManager';
+import { FeatureSettings } from '../components/Settings/FeatureSettings';
+import { useSettings } from '../hooks/useSettings';
 import { getAllCategories, getStorageStats, exportAllData, importData } from '../storage/storage';
-import type { CategoryInfo, StorageStats, StorageKey, BudgetLineData } from '../storage/schema';
+import type { CategoryInfo, StorageStats, StorageKey, BudgetLineData, UserSettings } from '../storage/schema';
 
 export function SettingsApp() {
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
   const [stats, setStats] = useState<StorageStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const { settings, updateSettings, isLoading: settingsLoading } = useSettings();
+
+  const handleFeatureToggle = useCallback(
+    (key: keyof UserSettings) => {
+      updateSettings({ [key]: !settings[key] });
+    },
+    [settings, updateSettings]
+  );
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -94,6 +104,19 @@ export function SettingsApp() {
           </button>
         </div>
       )}
+
+      {/* Feature Toggles */}
+      <section className="settings-section">
+        <h2>Features</h2>
+        {settingsLoading ? (
+          <div className="settings-loading">Loading settings...</div>
+        ) : (
+          <FeatureSettings
+            settings={settings}
+            onToggle={handleFeatureToggle}
+          />
+        )}
+      </section>
 
       {/* Storage Stats */}
       <section className="settings-section">

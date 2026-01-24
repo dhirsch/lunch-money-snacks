@@ -7,6 +7,7 @@ import { useMonthDetector } from './hooks/useMonthDetector';
 import { useBudgetRows } from './hooks/useBudgetRows';
 import { useBudgetTotals } from './hooks/useBudgetTotals';
 import { useSidebarContainer } from './hooks/useSidebarContainer';
+import { useSettings } from '../hooks/useSettings';
 import { getLineData } from '../storage/storage';
 
 interface ModalState {
@@ -21,6 +22,7 @@ export function BudgetEnhancer() {
   const budgetRows = useBudgetRows();
   const budgetTotals = useBudgetTotals();
   const sidebarContainer = useSidebarContainer();
+  const { settings } = useSettings();
   const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,
     category: '',
@@ -111,21 +113,20 @@ export function BudgetEnhancer() {
 
   return (
     <>
-      {/* Render icons next to each budget row */}
-      {budgetRows.map((row) =>
-        row.iconContainer
-          ? createPortal(
-              <BudgetIcon
-                hasData={dataStatus[row.category] || false}
-                onClick={() => handleIconClick(row.category, row.isRollover, row.inputElement)}
-              />,
-              row.iconContainer
-            )
-          : null
-      )}
+      {settings.budgetNotesEnabled &&
+        budgetRows.map((row) =>
+          row.iconContainer
+            ? createPortal(
+                <BudgetIcon
+                  hasData={dataStatus[row.category] || false}
+                  onClick={() => handleIconClick(row.category, row.isRollover, row.inputElement)}
+                />,
+                row.iconContainer
+              )
+            : null
+        )}
 
-      {/* Modal */}
-      {modalState.isOpen && (
+      {modalState.isOpen && settings.budgetNotesEnabled && (
         <BudgetModal
           month={currentMonth}
           category={modalState.category}
@@ -135,8 +136,8 @@ export function BudgetEnhancer() {
         />
       )}
 
-      {/* Period Summary Card in sidebar */}
-      {sidebarContainer &&
+      {settings.periodSummaryEnabled &&
+        sidebarContainer &&
         budgetTotals &&
         createPortal(
           <PeriodSummaryCard

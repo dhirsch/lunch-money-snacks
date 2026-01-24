@@ -52,6 +52,18 @@ export interface CategoryInfo {
   entryCount: number;
 }
 
+export interface UserSettings {
+  budgetNotesEnabled: boolean;
+  periodSummaryEnabled: boolean;
+}
+
+export const SETTINGS_STORAGE_KEY = '__settings__';
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  budgetNotesEnabled: true,
+  periodSummaryEnabled: true,
+};
+
 /**
  * Storage statistics
  */

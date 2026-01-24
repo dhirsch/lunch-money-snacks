@@ -9,6 +9,9 @@ import {
   CategoryInfo,
   StorageKey,
   StorageStats,
+  UserSettings,
+  DEFAULT_SETTINGS,
+  SETTINGS_STORAGE_KEY,
   createStorageKey,
   parseStorageKey,
   isValidMonthFormat
@@ -408,6 +411,15 @@ export async function exportAllData(): Promise<{
  * @param merge - If true, merge with existing data; if false, replace
  * @throws StorageError if operation fails
  */
+export async function getUserSettings(): Promise<UserSettings> {
+  const result = await extensionStorageGet<Partial<UserSettings>>([SETTINGS_STORAGE_KEY]);
+  return { ...DEFAULT_SETTINGS, ...result[SETTINGS_STORAGE_KEY] };
+}
+
+export async function saveUserSettings(settings: UserSettings): Promise<void> {
+  await extensionStorageSet({ [SETTINGS_STORAGE_KEY]: settings });
+}
+
 export async function importData(
   backupData: Record<StorageKey, BudgetLineData>,
   merge: boolean = true
