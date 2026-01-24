@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import { vi } from 'vitest';
 
 // Mock Chrome storage API for tests
 const mockStorage: Record<string, unknown> = {};
@@ -51,12 +52,22 @@ const chromeStorageMock = {
 
 const chromeRuntimeMock = {
   lastError: null as chrome.runtime.LastError | null,
+  openOptionsPage: vi.fn(),
+};
+
+const chromeActionMock = {
+  onClicked: {
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    hasListener: vi.fn(),
+  },
 };
 
 Object.defineProperty(globalThis, 'browser', {
   value: {
     storage: chromeStorageMock,
     runtime: chromeRuntimeMock,
+    action: chromeActionMock,
   },
   writable: true,
 });
@@ -66,6 +77,7 @@ Object.defineProperty(globalThis, 'chrome', {
   value: {
     storage: chromeStorageMock,
     runtime: chromeRuntimeMock,
+    action: chromeActionMock,
   },
   writable: true,
 });
@@ -74,6 +86,7 @@ Object.defineProperty(globalThis, 'browser', {
   value: {
     storage: chromeStorageMock,
     runtime: chromeRuntimeMock,
+    action: chromeActionMock,
   },
   writable: true,
 });
