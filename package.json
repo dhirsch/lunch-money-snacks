@@ -2,24 +2,33 @@
   "name": "budget-notes",
   "displayName": "Lunch Money Budget Notes",
   "version": "0.1.0",
-  "description": "Chrome extension that enhances Lunch Money budget view with notes and itemized breakdowns",
+  "description": "Extension that enhances Lunch Money budget view with notes and itemized breakdowns",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:chrome": "TARGET=chrome node scripts/build-manifest.mjs && TARGET=chrome vite build",
+    "build:firefox": "TARGET=firefox node scripts/build-manifest.mjs && TARGET=firefox vite build",
+    "build:safari": "TARGET=safari node scripts/build-manifest.mjs && TARGET=safari vite build",
+    "build:all": "npm run build:chrome && npm run build:firefox && npm run build:safari",
+    "package:chrome": "npm run build:chrome && node scripts/package-zip.mjs chrome",
+    "package:firefox": "npm run build:firefox && node scripts/package-zip.mjs firefox",
+    "package:safari": "npm run build:safari && node scripts/package-safari.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.25",
     "@testing-library/jest-dom": "^6.4.8",
     "@testing-library/react": "^16.0.0",
     "@types/chrome": "^0.0.268",
+    "@types/node": "^22.10.2",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

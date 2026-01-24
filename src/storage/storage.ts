@@ -1,8 +1,9 @@
 /**
- * Chrome storage wrapper for Budget Notes extension
- * Provides typed access to chrome.storage.local API
+ * Extension storage wrapper for Budget Notes extension
+ * Provides typed access to the extension storage API
  */
 
+import { extensionApi } from '../utils/extension-api';
 import {
   BudgetLineData,
   CategoryInfo,
@@ -45,89 +46,89 @@ function validateCategory(category: string): void {
 }
 
 /**
- * Wraps chrome.storage.local operations with error handling
+ * Wraps extension storage operations with error handling
  */
-async function chromeStorageGet<T>(keys: string | string[] | null): Promise<Record<string, T>> {
+async function extensionStorageGet<T>(keys: string | string[] | null): Promise<Record<string, T>> {
   return new Promise((resolve, reject) => {
     try {
-      chrome.storage.local.get(keys, (result) => {
-        if (chrome.runtime.lastError) {
+      extensionApi.storage.local.get(keys, (result: Record<string, T>) => {
+        if (extensionApi.runtime?.lastError) {
           reject(new StorageError(
-            `Failed to read from storage: ${chrome.runtime.lastError.message}`,
-            chrome.runtime.lastError
+            `Failed to read from storage: ${extensionApi.runtime.lastError.message}`,
+            extensionApi.runtime.lastError
           ));
         } else {
           resolve(result as Record<string, T>);
         }
       });
     } catch (error) {
-      reject(new StorageError('Chrome storage API not available', error));
+      reject(new StorageError('Extension storage API not available', error));
     }
   });
 }
 
 /**
- * Wraps chrome.storage.local.set with error handling
+ * Wraps extension storage.local.set with error handling
  */
-async function chromeStorageSet(items: Record<string, unknown>): Promise<void> {
+async function extensionStorageSet(items: Record<string, unknown>): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      chrome.storage.local.set(items, () => {
-        if (chrome.runtime.lastError) {
+      extensionApi.storage.local.set(items, () => {
+        if (extensionApi.runtime?.lastError) {
           reject(new StorageError(
-            `Failed to write to storage: ${chrome.runtime.lastError.message}`,
-            chrome.runtime.lastError
+            `Failed to write to storage: ${extensionApi.runtime.lastError.message}`,
+            extensionApi.runtime.lastError
           ));
         } else {
           resolve();
         }
       });
     } catch (error) {
-      reject(new StorageError('Chrome storage API not available', error));
+      reject(new StorageError('Extension storage API not available', error));
     }
   });
 }
 
 /**
- * Wraps chrome.storage.local.remove with error handling
+ * Wraps extension storage.local.remove with error handling
  */
-async function chromeStorageRemove(keys: string | string[]): Promise<void> {
+async function extensionStorageRemove(keys: string | string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      chrome.storage.local.remove(keys, () => {
-        if (chrome.runtime.lastError) {
+      extensionApi.storage.local.remove(keys, () => {
+        if (extensionApi.runtime?.lastError) {
           reject(new StorageError(
-            `Failed to remove from storage: ${chrome.runtime.lastError.message}`,
-            chrome.runtime.lastError
+            `Failed to remove from storage: ${extensionApi.runtime.lastError.message}`,
+            extensionApi.runtime.lastError
           ));
         } else {
           resolve();
         }
       });
     } catch (error) {
-      reject(new StorageError('Chrome storage API not available', error));
+      reject(new StorageError('Extension storage API not available', error));
     }
   });
 }
 
 /**
- * Wraps chrome.storage.local.getBytesInUse with error handling
+ * Wraps extension storage.local.getBytesInUse with error handling
  */
-async function chromeStorageGetBytesInUse(keys: string | string[] | null = null): Promise<number> {
+async function extensionStorageGetBytesInUse(keys: string | string[] | null = null): Promise<number> {
   return new Promise((resolve, reject) => {
     try {
-      chrome.storage.local.getBytesInUse(keys, (bytesInUse) => {
-        if (chrome.runtime.lastError) {
+      extensionApi.storage.local.getBytesInUse(keys, (bytesInUse: number) => {
+        if (extensionApi.runtime?.lastError) {
           reject(new StorageError(
-            `Failed to get storage usage: ${chrome.runtime.lastError.message}`,
-            chrome.runtime.lastError
+            `Failed to get storage usage: ${extensionApi.runtime.lastError.message}`,
+            extensionApi.runtime.lastError
           ));
         } else {
           resolve(bytesInUse);
         }
       });
     } catch (error) {
-      reject(new StorageError('Chrome storage API not available', error));
+      reject(new StorageError('Extension storage API not available', error));
     }
   });
 }
@@ -155,7 +156,7 @@ export async function saveLineData(
     lastModified: Date.now()
   };
 
-  await chromeStorageSet({ [key]: dataToSave });
+  await extensionStorageSet({ [key]: dataToSave });
 }
 
 /**
@@ -173,7 +174,7 @@ export async function getLineData(
   validateCategory(category);
 
   const key = createStorageKey(month, category);
-  const result = await chromeStorageGet<BudgetLineData>([key]);
+  const result = await extensionStorageGet<BudgetLineData>([key]);
 
   return result[key] ?? null;
 }
@@ -184,7 +185,7 @@ export async function getLineData(
  * @throws StorageError if read fails
  */
 export async function getAllCategories(): Promise<CategoryInfo[]> {
-  const allData = await chromeStorageGet<BudgetLineData>(null);
+  const allData = await extensionStorageGet<BudgetLineData>(null);
 
   // Group by category
   const categoryMap = new Map<string, Set<string>>();
@@ -231,12 +232,12 @@ export async function renameCategory(oldName: string, newName: string): Promise<
     return; // Nothing to do
   }
 
-  const allData = await chromeStorageGet<BudgetLineData>(null);
+  const allData = await extensionStorageGet<BudgetLineData>(null);
 
   const keysToRemove: string[] = [];
   const dataToSet: Record<string, BudgetLineData> = {};
 
-  for (const [key, value] of Object.entries(allData)) {
+  for (const [key, value] of Object.entries(allData) as [string, BudgetLineData][]) {
     const parsed = parseStorageKey(key);
     if (parsed && parsed.category === oldName) {
       keysToRemove.push(key);
@@ -266,11 +267,11 @@ export async function renameCategory(oldName: string, newName: string): Promise<
 
   // Apply changes: set new data first, then remove old keys
   if (Object.keys(dataToSet).length > 0) {
-    await chromeStorageSet(dataToSet);
+    await extensionStorageSet(dataToSet);
   }
 
   if (keysToRemove.length > 0) {
-    await chromeStorageRemove(keysToRemove);
+    await extensionStorageRemove(keysToRemove);
   }
 }
 
@@ -282,7 +283,7 @@ export async function renameCategory(oldName: string, newName: string): Promise<
 export async function deleteCategory(category: string): Promise<void> {
   validateCategory(category);
 
-  const allData = await chromeStorageGet<BudgetLineData>(null);
+  const allData = await extensionStorageGet<BudgetLineData>(null);
 
   const keysToRemove: string[] = [];
 
@@ -294,7 +295,7 @@ export async function deleteCategory(category: string): Promise<void> {
   }
 
   if (keysToRemove.length > 0) {
-    await chromeStorageRemove(keysToRemove);
+    await extensionStorageRemove(keysToRemove);
   }
 }
 
@@ -305,8 +306,8 @@ export async function deleteCategory(category: string): Promise<void> {
  */
 export async function getStorageStats(): Promise<StorageStats> {
   const [allData, bytesUsed] = await Promise.all([
-    chromeStorageGet<BudgetLineData>(null),
-    chromeStorageGetBytesInUse(null)
+    extensionStorageGet<BudgetLineData>(null),
+    extensionStorageGetBytesInUse(null)
   ]);
 
   const categories = new Set<string>();
@@ -334,18 +335,18 @@ export async function getStorageStats(): Promise<StorageStats> {
 export async function clearAllData(): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      chrome.storage.local.clear(() => {
-        if (chrome.runtime.lastError) {
+      extensionApi.storage.local.clear(() => {
+        if (extensionApi.runtime?.lastError) {
           reject(new StorageError(
-            `Failed to clear storage: ${chrome.runtime.lastError.message}`,
-            chrome.runtime.lastError
+            `Failed to clear storage: ${extensionApi.runtime.lastError.message}`,
+            extensionApi.runtime.lastError
           ));
         } else {
           resolve();
         }
       });
     } catch (error) {
-      reject(new StorageError('Chrome storage API not available', error));
+      reject(new StorageError('Extension storage API not available', error));
     }
   });
 }
@@ -359,10 +360,10 @@ export async function clearAllData(): Promise<void> {
 export async function getMonthData(month: string): Promise<Map<string, BudgetLineData>> {
   validateMonth(month);
 
-  const allData = await chromeStorageGet<BudgetLineData>(null);
+  const allData = await extensionStorageGet<BudgetLineData>(null);
   const monthData = new Map<string, BudgetLineData>();
 
-  for (const [key, value] of Object.entries(allData)) {
+  for (const [key, value] of Object.entries(allData) as [string, BudgetLineData][]) {
     const parsed = parseStorageKey(key);
     if (parsed && parsed.month === month) {
       monthData.set(parsed.category, value);
@@ -382,12 +383,12 @@ export async function exportAllData(): Promise<{
   exportedAt: number;
   data: Record<StorageKey, BudgetLineData>;
 }> {
-  const allData = await chromeStorageGet<BudgetLineData>(null);
+  const allData = await extensionStorageGet<BudgetLineData>(null);
 
   // Filter to only include valid budget line data keys
   const budgetData: Record<StorageKey, BudgetLineData> = {};
 
-  for (const [key, value] of Object.entries(allData)) {
+  for (const [key, value] of Object.entries(allData) as [string, BudgetLineData][]) {
     const parsed = parseStorageKey(key);
     if (parsed) {
       budgetData[key as StorageKey] = value;
@@ -421,7 +422,7 @@ export async function importData(
     const parsed = parseStorageKey(key);
     if (parsed) {
       if (merge) {
-        const existing = await chromeStorageGet<BudgetLineData>([key]);
+        const existing = await extensionStorageGet<BudgetLineData>([key]);
         if (existing[key]) {
           // Keep the more recent version
           if (value.lastModified > existing[key].lastModified) {
@@ -437,6 +438,6 @@ export async function importData(
   }
 
   if (Object.keys(dataToSet).length > 0) {
-    await chromeStorageSet(dataToSet);
+    await extensionStorageSet(dataToSet);
   }
 }

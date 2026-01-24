@@ -47,3 +47,6 @@ Thumbs.db
 *.crx
 *.pem
 *.zip
+
+# Generated manifests
+public/manifest.generated.json

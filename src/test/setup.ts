@@ -53,8 +53,24 @@ const chromeRuntimeMock = {
   lastError: null as chrome.runtime.LastError | null,
 };
 
+Object.defineProperty(globalThis, 'browser', {
+  value: {
+    storage: chromeStorageMock,
+    runtime: chromeRuntimeMock,
+  },
+  writable: true,
+});
+
 // Assign to globalThis
 Object.defineProperty(globalThis, 'chrome', {
+  value: {
+    storage: chromeStorageMock,
+    runtime: chromeRuntimeMock,
+  },
+  writable: true,
+});
+
+Object.defineProperty(globalThis, 'browser', {
   value: {
     storage: chromeStorageMock,
     runtime: chromeRuntimeMock,

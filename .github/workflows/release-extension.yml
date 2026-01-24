@@ -1,0 +1,79 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-chrome:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build and package Chrome
+        run: RELEASE_TAG=${{ github.ref_name }} npm run package:chrome
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunchmoney-budget-notes-chrome
+          path: lunchmoney-budget-notes-chrome-${{ github.ref_name }}.zip
+
+  build-firefox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build and package Firefox
+        run: RELEASE_TAG=${{ github.ref_name }} npm run package:firefox
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunchmoney-budget-notes-firefox
+          path: lunchmoney-budget-notes-firefox-${{ github.ref_name }}.zip
+
+  build-safari:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build and package Safari Xcode project
+        run: RELEASE_TAG=${{ github.ref_name }} npm run package:safari
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunchmoney-budget-notes-safari-xcode
+          path: lunchmoney-budget-notes-safari-xcode-${{ github.ref_name }}.zip
+
+  release:
+    needs: [build-chrome, build-firefox, build-safari]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/lunchmoney-budget-notes-chrome/lunchmoney-budget-notes-chrome-${{ github.ref_name }}.zip
+            release-assets/lunchmoney-budget-notes-firefox/lunchmoney-budget-notes-firefox-${{ github.ref_name }}.zip
+            release-assets/lunchmoney-budget-notes-safari-xcode/lunchmoney-budget-notes-safari-xcode-${{ github.ref_name }}.zip
