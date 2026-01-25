@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "description": "Add detailed notes and itemized breakdowns to your Lunch Money budget categories",
   "permissions": ["storage"],
-  "host_permissions": ["https://my.lunchmoney.app/*"],
+  "host_permissions": [
+    "https://my.lunchmoney.app/*",
+    "https://api.lunchmoney.dev/*"
+  ],
   "content_scripts": [
     {
       "matches": ["https://my.lunchmoney.app/budget*"],
@@ -14,7 +17,12 @@
     }
   ],
   "action": {
-    "default_title": "Lunch Money Budget Enhancer"
+    "default_title": "Lunch Money Budget Enhancer",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "options_ui": {
     "page": "settings.html",
