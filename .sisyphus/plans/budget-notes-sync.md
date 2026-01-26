@@ -48,10 +48,10 @@ Enable cross-browser sync of budget notes and itemized breakdowns via Lunch Mone
 - Unit tests for sync codec, API client, and service worker message handlers.
 
 ### Definition of Done
-- [ ] Sync works across browsers for the current month with API key configured.
-- [ ] Local-only behavior remains unchanged when no API key is set.
-- [ ] Split/reassemble logic handles >4096-byte payloads correctly.
-- [ ] All Vitest tests pass: `npm test`.
+- [x] Sync works across browsers for the current month with API key configured.
+- [x] Local-only behavior remains unchanged when no API key is set.
+- [x] Split/reassemble logic handles >4096-byte payloads correctly.
+- [x] All Vitest tests pass: `npm test`.
 
 ### Must Have
 - Sync is per-month and uses external_id `budget-notes-YYYY-MM` with splitting when needed.
@@ -313,8 +313,8 @@ npm test
 ```
 
 ### Final Checklist
-- [ ] Sync works across browsers for current month with API key configured.
-- [ ] Local-only behavior unchanged without API key.
-- [ ] Split/reassemble works for >4096-byte payloads.
-- [ ] Warning banner shows on sync failure.
-- [ ] All tests pass.
+- [x] Sync works across browsers for current month with API key configured.
+- [x] Local-only behavior unchanged without API key.
+- [x] Split/reassemble works for >4096-byte payloads.
+- [x] Warning banner shows on sync failure.
+- [x] All tests pass.
