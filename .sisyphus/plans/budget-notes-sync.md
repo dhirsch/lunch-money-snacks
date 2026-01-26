@@ -211,7 +211,7 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   **Manual Verification**:
   - [x] Update API key and conflict policy, reload settings, values persist.
 
-- [ ] 5. Add service worker sync handlers and messaging (TDD)
+- [x] 5. Add service worker sync handlers and messaging (TDD)
 
   **What to do**:
   - **RED**: Add unit tests for `runtime.onMessage` handlers and API calls with mocked fetch.
@@ -233,11 +233,11 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   - `src/utils/extension-api.ts` (runtime API wrapper)
 
   **Acceptance Criteria**:
-  - [ ] Unit tests cover sync pull/push message flows.
-  - [ ] `npm test` passes for service worker tests.
+  - [x] Unit tests cover sync pull/push message flows.
+  - [x] `npm test` passes for service worker tests.
 
   **Manual Verification**:
-  - [ ] Simulated message returns expected status object in tests.
+  - [x] Simulated message returns expected status object in tests.
 
 - [ ] 6. Add sync orchestration in content script (TDD)
 
