@@ -38,7 +38,7 @@ export function FeatureSettings({ settings, onToggle, disabled }: FeatureSetting
             <input
               type="checkbox"
               className="feature-toggle__input"
-              checked={settings[key]}
+              checked={settings[key] as boolean}
               onChange={() => onToggle(key)}
               disabled={disabled}
             />

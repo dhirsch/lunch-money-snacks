@@ -55,6 +55,11 @@ export interface CategoryInfo {
 export interface UserSettings {
   budgetNotesEnabled: boolean;
   periodSummaryEnabled: boolean;
+  syncEnabled?: boolean;
+  apiKey?: string;
+  conflictPolicy?: 'last-write-wins' | 'local-wins' | 'remote-wins';
+  lastSyncAt?: number;
+  lastSyncError?: string;
 }
 
 export const SETTINGS_STORAGE_KEY = '__settings__';
@@ -62,6 +67,8 @@ export const SETTINGS_STORAGE_KEY = '__settings__';
 export const DEFAULT_SETTINGS: UserSettings = {
   budgetNotesEnabled: true,
   periodSummaryEnabled: true,
+  syncEnabled: false,
+  conflictPolicy: 'last-write-wins',
 };
 
 /**

@@ -179,7 +179,7 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   **Manual Verification**:
   - [x] Test fixtures show correct part counts and reassembled equality.
 
-- [ ] 4. Extend settings schema and UI for sync configuration (TDD)
+- [x] 4. Extend settings schema and UI for sync configuration (TDD)
 
   **What to do**:
   - **RED**: Add unit tests for settings persistence and default values.
@@ -204,12 +204,12 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   - `src/components/Settings/FeatureSettings.tsx` (toggle pattern)
 
   **Acceptance Criteria**:
-  - [ ] Settings persist across reloads via `chrome.storage.local`.
-  - [ ] API key is stored only in extension storage.
-  - [ ] `npm test` passes for settings tests.
+  - [x] Settings persist across reloads via `chrome.storage.local`.
+  - [x] API key is stored only in extension storage.
+  - [x] `npm test` passes for settings tests.
 
   **Manual Verification**:
-  - [ ] Update API key and conflict policy, reload settings, values persist.
+  - [x] Update API key and conflict policy, reload settings, values persist.
 
 - [ ] 5. Add service worker sync handlers and messaging (TDD)
 

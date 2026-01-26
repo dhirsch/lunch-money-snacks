@@ -118,6 +118,80 @@ export function SettingsApp() {
         )}
       </section>
 
+      {/* Cloud Sync */}
+      <section className="settings-section">
+        <h2>Cloud Sync</h2>
+        <p className="settings-help">
+          Sync your budget notes across browsers using the Lunch Money API.
+        </p>
+        {settingsLoading ? (
+          <div className="settings-loading">Loading settings...</div>
+        ) : (
+          <div className="settings-form">
+            <div className="form-group">
+              <label htmlFor="apiKey">
+                API Key
+                <span className="label-help">(Get from Lunch Money Settings → Developers)</span>
+              </label>
+              <input
+                id="apiKey"
+                type="password"
+                value={settings.apiKey || ''}
+                onChange={(e) => {
+                  updateSettings({
+                    apiKey: e.target.value,
+                    lastSyncAt: undefined,
+                    lastSyncError: undefined,
+                  });
+                }}
+                placeholder="Enter your Lunch Money API key"
+                className="settings-input"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="conflictPolicy">Conflict Resolution</label>
+              <select
+                id="conflictPolicy"
+                value={settings.conflictPolicy || 'last-write-wins'}
+                onChange={(e) => updateSettings({ conflictPolicy: e.target.value as 'last-write-wins' | 'local-wins' | 'remote-wins' })}
+                className="settings-select"
+              >
+                <option value="last-write-wins">Last Write Wins (Recommended)</option>
+                <option value="local-wins">Always Prefer Local</option>
+                <option value="remote-wins">Always Prefer Remote</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={settings.syncEnabled || false}
+                  onChange={(e) => updateSettings({ syncEnabled: e.target.checked })}
+                  disabled={!settings.apiKey}
+                />
+                <span>Enable Sync</span>
+              </label>
+              {!settings.apiKey && (
+                <p className="settings-help">API key required to enable sync</p>
+              )}
+            </div>
+
+            {settings.lastSyncAt && (
+              <div className="sync-status">
+                Last synced: {new Date(settings.lastSyncAt).toLocaleString()}
+              </div>
+            )}
+            {settings.lastSyncError && (
+              <div className="sync-error">
+                Error: {settings.lastSyncError}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
       {/* Storage Stats */}
       <section className="settings-section">
         <h2>Storage Usage</h2>
