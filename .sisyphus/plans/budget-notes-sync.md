@@ -120,7 +120,7 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   **Manual Verification**:
   - [x] Inspect `api-1.yaml` and note final base URL + lookup plan in code comments or plan notes.
 
-- [ ] 2. Add API client module with tests (TDD)
+- [x] 2. Add API client module with tests (TDD)
 
   **What to do**:
   - **RED**: Add unit tests for API client (request headers, URL construction, error handling, include_metadata).
@@ -142,11 +142,11 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   - `api-1.yaml:5481` (POST /transactions request body)
 
   **Acceptance Criteria**:
-  - [ ] New unit tests cover success + failure responses and header construction.
-  - [ ] `npm test` passes for API client tests.
+  - [x] New unit tests cover success + failure responses and header construction.
+  - [x] `npm test` passes for API client tests.
 
   **Manual Verification**:
-  - [ ] Mocked fetch shows correct URL and Authorization header in tests.
+  - [x] Mocked fetch shows correct URL and Authorization header in tests.
 
 - [ ] 3. Build sync codec (serialize/split/reassemble) with tests (TDD)
 
