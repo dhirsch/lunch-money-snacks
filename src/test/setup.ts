@@ -17,27 +17,26 @@ const chromeStorageMock = {
           result[key] = mockStorage[key];
         });
       }
-      // Call the callback asynchronously to simulate real Chrome API
-      setTimeout(() => callback(result), 0);
+      queueMicrotask(() => callback(result));
     }),
     set: vi.fn((items: Record<string, unknown>, callback?: () => void) => {
       Object.assign(mockStorage, items);
-      if (callback) setTimeout(() => callback(), 0);
+      if (callback) queueMicrotask(() => callback());
     }),
     remove: vi.fn((keys: string | string[], callback?: () => void) => {
       const keysArray = typeof keys === 'string' ? [keys] : keys;
       keysArray.forEach((key) => {
         delete mockStorage[key];
       });
-      if (callback) setTimeout(() => callback(), 0);
+      if (callback) queueMicrotask(() => callback());
     }),
     getBytesInUse: vi.fn((keys: string | string[] | null, callback: (bytesInUse: number) => void) => {
       const size = JSON.stringify(mockStorage).length;
-      setTimeout(() => callback(size), 0);
+      queueMicrotask(() => callback(size));
     }),
     clear: vi.fn((callback?: () => void) => {
       Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
-      if (callback) setTimeout(() => callback(), 0);
+      if (callback) queueMicrotask(() => callback());
     }),
   },
   sync: {},
