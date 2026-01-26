@@ -148,7 +148,7 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   **Manual Verification**:
   - [x] Mocked fetch shows correct URL and Authorization header in tests.
 
-- [ ] 3. Build sync codec (serialize/split/reassemble) with tests (TDD)
+- [x] 3. Build sync codec (serialize/split/reassemble) with tests (TDD)
 
   **What to do**:
   - **RED**: Add tests for encoding/decoding month data to custom_metadata, including:
@@ -173,11 +173,11 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   - `api-1.yaml:1229` (custom_metadata schema)
 
   **Acceptance Criteria**:
-  - [ ] Unit tests cover split/reassemble and byte limit edge cases.
-  - [ ] `npm test` passes for codec tests.
+  - [x] Unit tests cover split/reassemble and byte limit edge cases.
+  - [x] `npm test` passes for codec tests.
 
   **Manual Verification**:
-  - [ ] Test fixtures show correct part counts and reassembled equality.
+  - [x] Test fixtures show correct part counts and reassembled equality.
 
 - [ ] 4. Extend settings schema and UI for sync configuration (TDD)
 
