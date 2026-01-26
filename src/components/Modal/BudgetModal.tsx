@@ -6,6 +6,7 @@ import { getLineData, saveLineData } from '../../storage/storage';
 import { createEmptyLineData } from '../../storage/schema';
 import type { BudgetLineData, ItemizedItem } from '../../storage/schema';
 import { calculateSum } from '../../utils/currency';
+import { SyncManager } from '../../sync/sync-manager';
 
 interface BudgetModalProps {
   month: string;
@@ -27,6 +28,7 @@ export function BudgetModal({
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const [syncManager] = useState(() => new SyncManager());
 
   // Load data on mount
   useEffect(() => {
@@ -59,8 +61,11 @@ export function BudgetModal({
     });
     setHasUnsavedChanges(false);
     setIsSaving(false);
+    
+    syncManager.debouncedPush(month);
+    
     onClose();
-  }, [month, category, data, onClose]);
+  }, [month, category, data, onClose, syncManager]);
 
   const handleNotesChange = useCallback((notes: string) => {
     setData((prev) => ({ ...prev, notes }));

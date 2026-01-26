@@ -9,6 +9,7 @@ import { useBudgetTotals } from './hooks/useBudgetTotals';
 import { useSidebarContainer } from './hooks/useSidebarContainer';
 import { useSettings } from '../hooks/useSettings';
 import { getLineData } from '../storage/storage';
+import { SyncManager } from '../sync/sync-manager';
 
 interface ModalState {
   isOpen: boolean;
@@ -30,6 +31,23 @@ export function BudgetEnhancer() {
     targetInput: null,
   });
   const [dataStatus, setDataStatus] = useState<Record<string, boolean>>({});
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncManager] = useState(() => new SyncManager());
+
+  useEffect(() => {
+    if (!currentMonth) return;
+    
+    syncManager.pullSync(currentMonth).catch((error: Error) => {
+      console.error('[BudgetEnhancer] Sync pull failed:', error);
+      setSyncError(error.message || 'Sync failed');
+    });
+
+    syncManager.getSyncStatus().then((status) => {
+      if (status.lastSyncError) {
+        setSyncError(status.lastSyncError);
+      }
+    });
+  }, [currentMonth, syncManager]);
 
   // Check which categories have data
   const refreshDataStatus = useCallback(async () => {
@@ -113,6 +131,44 @@ export function BudgetEnhancer() {
 
   return (
     <>
+      {syncError && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '60px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10000,
+            backgroundColor: '#fee',
+            border: '1px solid #fcc',
+            borderRadius: '4px',
+            padding: '12px 16px',
+            maxWidth: '600px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+          }}
+        >
+          <span style={{ flex: 1, color: '#c00' }}>
+            Sync Error: {syncError}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSyncError(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '20px',
+              cursor: 'pointer',
+              color: '#c00',
+              padding: '0 4px',
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
       {settings.budgetNotesEnabled &&
         budgetRows.map((row) =>
           row.iconContainer

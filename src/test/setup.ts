@@ -52,6 +52,11 @@ const chromeStorageMock = {
 const chromeRuntimeMock = {
   lastError: null as chrome.runtime.LastError | null,
   openOptionsPage: vi.fn(),
+  onMessage: {
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    hasListener: vi.fn(),
+  },
 };
 
 const chromeActionMock = {

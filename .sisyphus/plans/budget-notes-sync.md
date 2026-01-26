@@ -239,7 +239,7 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   **Manual Verification**:
   - [x] Simulated message returns expected status object in tests.
 
-- [ ] 6. Add sync orchestration in content script (TDD)
+- [x] 6. Add sync orchestration in content script (TDD)
 
   **What to do**:
   - **RED**: Add tests for sync orchestrator logic (debounce, policy selection).
@@ -261,14 +261,14 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   - `src/storage/storage.ts#L146` (saveLineData)
 
   **Acceptance Criteria**:
-  - [ ] Debounced push occurs after save (use configurable interval).
-  - [ ] Pull runs on month change and populates local storage.
-  - [ ] `npm test` passes for sync-manager tests.
+  - [x] Debounced push occurs after save (use configurable interval).
+  - [x] Pull runs on month change and populates local storage.
+  - [x] `npm test` passes for sync-manager tests.
 
   **Manual Verification**:
-  - [ ] Save notes, verify push call enqueued.
+  - [x] Save notes, verify push call enqueued.
 
-- [ ] 7. Add budget-page warning banner for sync failures (TDD)
+- [x] 7. Add budget-page warning banner for sync failures (TDD)
 
   **What to do**:
   - **RED**: Add UI tests for banner rendering based on sync status.
@@ -285,11 +285,11 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 5 → Task 6 → Task 7
   - `src/settings/SettingsApp.tsx` (existing banner styling pattern)
 
   **Acceptance Criteria**:
-  - [ ] Banner appears on API error and disappears after successful sync.
-  - [ ] `npm test` passes for UI tests.
+  - [x] Banner appears on API error and disappears after successful sync.
+  - [x] `npm test` passes for UI tests.
 
   **Manual Verification**:
-  - [ ] Simulate sync failure and verify banner visibility on budget page.
+  - [x] Simulate sync failure and verify banner visibility on budget page.
 
 ---
 
