@@ -8,6 +8,8 @@ describe('Settings Schema', () => {
     
     expect(settings.syncEnabled).toBe(false);
     expect(settings.apiKey).toBeUndefined();
+    expect(settings.openRouterApiKey).toBeUndefined();
+    expect(settings.openRouterModel).toBe('anthropic/claude-haiku-4.5');
     expect(settings.conflictPolicy).toBe('last-write-wins');
     expect(settings.lastSyncAt).toBeUndefined();
     expect(settings.lastSyncError).toBeUndefined();

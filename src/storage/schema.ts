@@ -57,6 +57,8 @@ export interface UserSettings {
   periodSummaryEnabled: boolean;
   syncEnabled?: boolean;
   apiKey?: string;
+  openRouterApiKey?: string;
+  openRouterModel?: string;
   conflictPolicy?: 'last-write-wins' | 'local-wins' | 'remote-wins';
   lastSyncAt?: number;
   lastSyncError?: string;
@@ -68,6 +70,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   budgetNotesEnabled: true,
   periodSummaryEnabled: true,
   syncEnabled: false,
+  openRouterModel: 'anthropic/claude-haiku-4.5',
   conflictPolicy: 'last-write-wins',
 };
 

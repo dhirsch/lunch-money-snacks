@@ -1,21 +1,35 @@
 import { extensionApi } from '../utils/extension-api';
 import { getUserSettings, saveUserSettings, getMonthData } from '../storage/storage';
 import {
+  getCategories,
   getTransactions,
   createTransactions,
   updateTransaction,
   type Transaction,
   type InsertTransaction,
 } from '../api/lunch-money-client';
+import { summarizeAmazonItems } from '../api/openrouter-client';
+import {
+  buildAmazonCharges,
+  matchAmazonChargeItems,
+  parseAmazonCsv,
+  type AmazonItem,
+} from '../amazon/amazon-csv';
 import type { BudgetLineData, UserSettings } from '../storage/schema';
+
+const AMAZON_DATE_MATCH_WINDOW_DAYS = 5;
 
 extensionApi.action.onClicked.addListener(() => {
   extensionApi.runtime.openOptionsPage();
 });
 
 interface SyncMessage {
-  type: 'sync:status' | 'sync:pull' | 'sync:push';
-  payload?: { month?: string };
+  type: 'sync:status' | 'sync:pull' | 'sync:push' | 'amazon:preview' | 'amazon:apply';
+  payload?: {
+    month?: string;
+    csvText?: string;
+    updates?: AmazonApplyUpdate[];
+  };
 }
 
 interface SyncStatusResponse {
@@ -42,7 +56,61 @@ interface SyncErrorResponse {
   error: string;
 }
 
-type SyncResponse = SyncStatusResponse | SyncPullResponse | SyncPushResponse | SyncErrorResponse;
+interface AmazonPreviewItem {
+  transactionId: number;
+  date: string;
+  amount: string;
+  payee: string;
+  currentNotes: string | null;
+  itemsText: string;
+  itemTitles: string[];
+  suggestedCategoryId: number | null;
+  suggestedCategoryName: string | null;
+}
+
+interface AmazonSkippedItem {
+  date: string;
+  orderId: string;
+  chargedAmount: number;
+  reason: string;
+  itemTitles: string[];
+  matchingTransactions: Array<{
+    id: number;
+    date: string;
+    amount: string;
+    payee: string;
+    notes: string | null;
+  }>;
+}
+
+interface AmazonPreviewResponse {
+  success: true;
+  data: {
+    previews: AmazonPreviewItem[];
+    skipped: number;
+    skippedItems: AmazonSkippedItem[];
+  };
+}
+
+interface AmazonApplyUpdate {
+  transactionId: number;
+  currentNotes: string | null;
+  itemsText: string;
+  categoryId?: number | null;
+}
+
+interface AmazonApplyResponse {
+  success: true;
+  data: { updated: number };
+}
+
+type SyncResponse =
+  | SyncStatusResponse
+  | SyncPullResponse
+  | SyncPushResponse
+  | AmazonPreviewResponse
+  | AmazonApplyResponse
+  | SyncErrorResponse;
 
 function getMonthDateRange(month: string): { start_date: string; end_date: string } {
   const [year, monthNum] = month.split('-').map(Number);
@@ -89,6 +157,68 @@ function shouldUseRemote(
 
 function isEmptyBudgetData(data: BudgetLineData): boolean {
   return !data.notes && data.items.length === 0;
+}
+
+function isAmazonTransaction(tx: Transaction): boolean {
+  return /amazon/i.test(tx.payee);
+}
+
+function transactionAmountCents(tx: Transaction): number {
+  return Math.round(Math.abs(Number(tx.amount)) * 100);
+}
+
+function parseDateOnly(date: string): Date {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function daysBetween(dateA: string, dateB: string): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round(
+    Math.abs(parseDateOnly(dateA).getTime() - parseDateOnly(dateB).getTime()) / msPerDay,
+  );
+}
+
+export function findAmazonCandidateTransactions(
+  chargeDate: string,
+  chargedAmount: number,
+  transactions: Transaction[],
+): Transaction[] {
+  const chargeAmountCents = Math.round(Math.abs(chargedAmount) * 100);
+  return transactions.filter(
+    (tx) =>
+      transactionAmountCents(tx) === chargeAmountCents &&
+      daysBetween(tx.date, chargeDate) <= AMAZON_DATE_MATCH_WINDOW_DAYS,
+  );
+}
+
+function appendItemsNote(currentNotes: string | null, itemsText: string): string {
+  const itemNote = `Items: ${itemsText}`;
+  const trimmed = currentNotes?.trim();
+  if (!trimmed) return itemNote;
+  if (trimmed.includes(itemNote)) return trimmed;
+  return `${trimmed}\n${itemNote}`;
+}
+
+function toSkippedItem(
+  charge: { date: string; orderId: string; chargedAmount: number; items: AmazonItem[] },
+  reason: string,
+  matchingTransactions: Transaction[] = [],
+): AmazonSkippedItem {
+  return {
+    date: charge.date,
+    orderId: charge.orderId,
+    chargedAmount: charge.chargedAmount,
+    reason,
+    itemTitles: charge.items.map((item) => item.title),
+    matchingTransactions: matchingTransactions.map((tx) => ({
+      id: tx.id,
+      date: tx.date,
+      amount: tx.amount,
+      payee: tx.payee,
+      notes: tx.notes,
+    })),
+  };
 }
 
 async function handleSyncStatus(): Promise<SyncStatusResponse> {
@@ -243,6 +373,137 @@ async function handleSyncPush(month: string): Promise<SyncPushResponse | SyncErr
   }
 }
 
+async function handleAmazonPreview(
+  month: string,
+  csvText: string | undefined,
+): Promise<AmazonPreviewResponse | SyncErrorResponse> {
+  const settings = await getUserSettings();
+
+  if (!settings.apiKey) {
+    return { success: false, error: 'Lunch Money API key is not configured' };
+  }
+  if (!settings.openRouterApiKey) {
+    return { success: false, error: 'OpenRouter API key is not configured' };
+  }
+  if (!csvText) {
+    return { success: false, error: 'Amazon CSV file is required' };
+  }
+
+  try {
+    const rows = parseAmazonCsv(csvText);
+    const charges = buildAmazonCharges(rows).filter((charge) => charge.date.startsWith(month));
+    const { start_date, end_date } = getMonthDateRange(month);
+    const [transactions, categories] = await Promise.all([
+      getTransactions(settings.apiKey, {
+        start_date,
+        end_date,
+        include_metadata: true,
+      }),
+      getCategories(settings.apiKey),
+    ]);
+
+    const amazonTransactions = transactions.filter(isAmazonTransaction);
+    const previews: AmazonPreviewItem[] = [];
+    const skippedItems: AmazonSkippedItem[] = [];
+
+    for (const charge of charges) {
+      const matchingTransactions = findAmazonCandidateTransactions(
+        charge.date,
+        charge.chargedAmount,
+        amazonTransactions,
+      );
+      if (matchingTransactions.length !== 1) {
+        skippedItems.push(
+          toSkippedItem(
+            charge,
+            matchingTransactions.length === 0
+              ? `No Lunch Money Amazon transaction matched this amount within ${AMAZON_DATE_MATCH_WINDOW_DAYS} days.`
+              : `Multiple Lunch Money Amazon transactions matched this amount within ${AMAZON_DATE_MATCH_WINDOW_DAYS} days.`,
+            matchingTransactions,
+          ),
+        );
+        continue;
+      }
+
+      const itemMatch = matchAmazonChargeItems(rows, charge);
+      if (!itemMatch) {
+        skippedItems.push(
+          toSkippedItem(
+            charge,
+            'Could not map this charge amount to a unique set of items from the order.',
+            matchingTransactions,
+          ),
+        );
+        continue;
+      }
+
+      const tx = matchingTransactions[0];
+      let suggestion;
+      try {
+        suggestion = await summarizeAmazonItems(
+          settings.openRouterApiKey,
+          settings.openRouterModel || 'anthropic/claude-haiku-4.5',
+          itemMatch.matchedItems as AmazonItem[],
+          categories,
+        );
+      } catch (error) {
+        skippedItems.push(
+          toSkippedItem(
+            { ...charge, items: itemMatch.matchedItems },
+            `OpenRouter summarization failed: ${error instanceof Error ? error.message : String(error)}`,
+            matchingTransactions,
+          ),
+        );
+        continue;
+      }
+
+      previews.push({
+        transactionId: tx.id,
+        date: tx.date,
+        amount: tx.amount,
+        payee: tx.payee,
+        currentNotes: tx.notes,
+        itemsText: suggestion.itemsText,
+        itemTitles: itemMatch.matchedItems.map((item) => item.title),
+        suggestedCategoryId: suggestion.categoryId,
+        suggestedCategoryName: suggestion.categoryName,
+      });
+    }
+
+    return { success: true, data: { previews, skipped: skippedItems.length, skippedItems } };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+async function handleAmazonApply(
+  updates: AmazonApplyUpdate[] | undefined,
+): Promise<AmazonApplyResponse | SyncErrorResponse> {
+  const settings = await getUserSettings();
+
+  if (!settings.apiKey) {
+    return { success: false, error: 'Lunch Money API key is not configured' };
+  }
+  if (!updates || updates.length === 0) {
+    return { success: false, error: 'No Amazon transaction updates selected' };
+  }
+
+  try {
+    let updated = 0;
+    for (const item of updates) {
+      await updateTransaction(settings.apiKey, item.transactionId, {
+        notes: appendItemsNote(item.currentNotes, item.itemsText),
+        category_id: item.categoryId ?? undefined,
+      });
+      updated++;
+    }
+
+    return { success: true, data: { updated } };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 extensionApi.runtime.onMessage.addListener(
   (message: SyncMessage, _sender: unknown, sendResponse: (response: SyncResponse) => void) => {
     const handleMessage = async (): Promise<SyncResponse> => {
@@ -253,6 +514,10 @@ extensionApi.runtime.onMessage.addListener(
           return handleSyncPull(message.payload?.month ?? getCurrentMonth());
         case 'sync:push':
           return handleSyncPush(message.payload?.month ?? getCurrentMonth());
+        case 'amazon:preview':
+          return handleAmazonPreview(message.payload?.month ?? getCurrentMonth(), message.payload?.csvText);
+        case 'amazon:apply':
+          return handleAmazonApply(message.payload?.updates);
         default:
           return { success: false, error: `Unknown message type: ${(message as SyncMessage).type}` };
       }

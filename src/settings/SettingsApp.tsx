@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CategoryManager } from '../components/Settings/CategoryManager';
 import { FeatureSettings } from '../components/Settings/FeatureSettings';
+import { AmazonImport } from '../components/Settings/AmazonImport';
 import { useSettings } from '../hooks/useSettings';
 import { getAllCategories, getStorageStats, exportAllData, importData } from '../storage/storage';
 import type { CategoryInfo, StorageStats, StorageKey, BudgetLineData, UserSettings } from '../storage/schema';
@@ -189,6 +190,61 @@ export function SettingsApp() {
               </div>
             )}
           </div>
+        )}
+      </section>
+
+      {/* AI Settings */}
+      <section className="settings-section">
+        <h2>AI Settings</h2>
+        <p className="settings-help">
+          Used to summarize Amazon item titles and suggest categories through OpenRouter.
+        </p>
+        {settingsLoading ? (
+          <div className="settings-loading">Loading settings...</div>
+        ) : (
+          <div className="settings-form">
+            <div className="form-group">
+              <label htmlFor="openRouterApiKey">OpenRouter API Key</label>
+              <input
+                id="openRouterApiKey"
+                type="password"
+                value={settings.openRouterApiKey || ''}
+                onChange={(e) => updateSettings({ openRouterApiKey: e.target.value })}
+                placeholder="Enter your OpenRouter API key"
+                className="settings-input"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="openRouterModel">OpenRouter Model</label>
+              <input
+                id="openRouterModel"
+                type="text"
+                value={settings.openRouterModel || 'anthropic/claude-haiku-4.5'}
+                onChange={(e) => updateSettings({ openRouterModel: e.target.value })}
+                className="settings-input"
+              />
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Amazon Import */}
+      <section className="settings-section">
+        <h2>Amazon Transaction Memos</h2>
+        <p className="settings-help">
+          Upload an Amazon item CSV, preview matched transactions, then append item summaries to
+          Lunch Money notes.
+        </p>
+        <AmazonImport
+          disabled={settingsLoading || !settings.apiKey || !settings.openRouterApiKey}
+          onMessage={setMessage}
+        />
+        {!settings.apiKey && (
+          <p className="settings-help">Lunch Money API key required to fetch and update transactions.</p>
+        )}
+        {!settings.openRouterApiKey && (
+          <p className="settings-help">OpenRouter API key required to summarize item titles.</p>
         )}
       </section>
 

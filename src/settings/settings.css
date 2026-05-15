@@ -154,6 +154,162 @@ body {
   background: #f3f4f6;
 }
 
+.settings-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.settings-btn--primary {
+  background: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+.settings-btn--primary:hover:not(:disabled) {
+  background: #059669;
+}
+
+/* Forms */
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.label-help {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.settings-input,
+.settings-select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #111827;
+}
+
+.settings-input:focus,
+.settings-select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.sync-status {
+  color: #065f46;
+  font-size: 13px;
+}
+
+.sync-error {
+  color: #991b1b;
+  font-size: 13px;
+}
+
+/* Amazon Import */
+.amazon-import {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.amazon-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.amazon-preview__meta {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.amazon-preview__row {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  background: #f9fafb;
+}
+
+.amazon-preview__memo {
+  margin: 8px 0 0 24px;
+  font-size: 13px;
+  color: #111827;
+}
+
+.amazon-preview__category {
+  margin: 8px 0 0 24px;
+  font-size: 13px;
+}
+
+.amazon-debug {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.amazon-debug summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+}
+
+.amazon-debug__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.amazon-debug__row {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+  font-size: 12px;
+}
+
+.amazon-debug__title {
+  font-weight: 600;
+  color: #111827;
+}
+
+.amazon-debug__reason {
+  margin-top: 4px;
+  color: #991b1b;
+}
+
+.amazon-debug__items,
+.amazon-debug__matches {
+  margin-top: 4px;
+  color: #6b7280;
+  overflow-wrap: anywhere;
+}
+
 /* Category Manager */
 .category-manager-empty {
   text-align: center;

@@ -6,7 +6,8 @@
   "permissions": ["storage"],
   "host_permissions": [
     "https://my.lunchmoney.app/*",
-    "https://api.lunchmoney.dev/*"
+    "https://api.lunchmoney.dev/*",
+    "https://openrouter.ai/*"
   ],
   "content_scripts": [
     {

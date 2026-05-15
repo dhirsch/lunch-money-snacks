@@ -878,3 +878,42 @@ describe('Service Worker - Sync Message Handlers', () => {
     });
   });
 });
+
+describe('Amazon transaction candidate matching', () => {
+  function createAmazonTransaction(id: number, date: string, amount: string): Transaction {
+    return {
+      id,
+      date,
+      amount,
+      currency: 'usd',
+      to_base: Number(amount),
+      recurring_id: null,
+      payee: 'Amazon',
+      category_id: null,
+      external_id: null,
+      tag_ids: [],
+      notes: null,
+      status: 'reviewed',
+      is_pending: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      split_parent_id: null,
+      is_group_parent: false,
+      group_parent_id: null,
+      source: 'plaid',
+    };
+  }
+
+  it('matches transactions with the same amount within five days of the Amazon charge date', async () => {
+    const { findAmazonCandidateTransactions } = await import('../../src/background/service-worker');
+    const transactions = [
+      createAmazonTransaction(1, '2026-05-07', '44.48'),
+      createAmazonTransaction(2, '2026-05-18', '44.48'),
+      createAmazonTransaction(3, '2026-05-12', '12.00'),
+    ];
+
+    const matches = findAmazonCandidateTransactions('2026-05-12', -44.48, transactions);
+
+    expect(matches.map((tx) => tx.id)).toEqual([1]);
+  });
+});

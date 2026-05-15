@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { resetMockStorage, seedMockStorage } from '../../src/test/setup';
+
+vi.mock('webextension-polyfill', () => ({
+  default: (globalThis as any).chrome,
+}));
+
 import {
   saveLineData,
   getLineData,
