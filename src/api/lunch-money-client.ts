@@ -54,6 +54,13 @@ export interface CreateCategoryRequest {
   archived?: boolean;
 }
 
+export interface Tag {
+  id: number;
+  name: string;
+  description: string | null;
+  archived: boolean;
+}
+
 export interface Transaction {
   id: number;
   date: string;
@@ -195,6 +202,22 @@ export async function createCategory(
     method: 'POST',
     headers: jsonHeaders(apiKey),
     body: JSON.stringify(request),
+  });
+}
+
+export async function getTags(apiKey: string): Promise<Tag[]> {
+  const data = await apiRequest<{ tags: Tag[] }>(`${BASE_URL}/tags`, {
+    method: 'GET',
+    headers: authHeaders(apiKey),
+  });
+  return data.tags;
+}
+
+export async function createTag(apiKey: string, name: string): Promise<Tag> {
+  return apiRequest<Tag>(`${BASE_URL}/tags`, {
+    method: 'POST',
+    headers: jsonHeaders(apiKey),
+    body: JSON.stringify({ name }),
   });
 }
 

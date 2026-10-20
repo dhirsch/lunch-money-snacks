@@ -1,71 +1,89 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildAmazonCharges,
-  matchAmazonChargeItems,
-  parseAmazonCsv,
-} from '../../src/amazon/amazon-csv';
+import { buildAmazonCharges, matchSplitCharge, parseAmazonCsv, type AmazonCharge } from '../../src/amazon/amazon-csv';
+
+const HEADER =
+  'Order ID,Order Date,Total Amount,Currency,Total Savings,Status,Item Title,Item ASIN,Item Quantity,Item Price,Item Discount,Promotions,Item URL,Details URL,Recipient Name,Recipient Street,Recipient City / Postal,Recipient Country';
 
 describe('Amazon CSV utilities', () => {
   const csvText = [
-    'date,order_id,section,status,payment_method,charged_amount,merchant,order_placed,order_subtotal,order_shipping,order_tax,order_grand_total,item_num,item_title,item_asin,item_price,item_quantity,item_condition,item_sold_by',
-    '"May 8, 2026",113-2143912-8516210,Completed,Completed,Visa ****0158,-$27.63,,"May 8, 2026",$43.84,$0.00,$4.71,$48.55,1,"Work Gloves, X-Large",B0D7BPJRMJ,$9.90,1,New,HANDLANDY',
-    '"May 8, 2026",113-2143912-8516210,Completed,Completed,Visa ****0158,-$27.63,,"May 8, 2026",$43.84,$0.00,$4.71,$48.55,2,"Cooling Gardening Gloves",B09WRKT2YT,$8.99,1,New,Brigic',
-    '"May 8, 2026",113-2143912-8516210,Completed,Completed,Visa ****0158,-$27.63,,"May 8, 2026",$43.84,$0.00,$4.71,$48.55,3,"Garden Tool Set",B01MUXL5V8,$24.95,1,New,Amazon.com',
-    '"May 8, 2026",113-2143912-8516210,Completed,Completed,Visa ****0158,-$20.92,,"May 8, 2026",$43.84,$0.00,$4.71,$48.55,1,"Work Gloves, X-Large",B0D7BPJRMJ,$9.90,1,New,HANDLANDY',
-    '"May 8, 2026",113-2143912-8516210,Completed,Completed,Visa ****0158,-$20.92,,"May 8, 2026",$43.84,$0.00,$4.71,$48.55,2,"Cooling Gardening Gloves",B09WRKT2YT,$8.99,1,New,Brigic',
-    '"May 8, 2026",113-2143912-8516210,Completed,Completed,Visa ****0158,-$20.92,,"May 8, 2026",$43.84,$0.00,$4.71,$48.55,3,"Garden Tool Set",B01MUXL5V8,$24.95,1,New,Amazon.com',
+    HEADER,
+    '113-8285202-4396238,2026-10-16,58.97,USD,9.7,Delivered October 18,"Sunscreen SPF 50+, 6 Fl Oz",B00K3JQO9Y,2,14.99,0,Additional discount: €9.7,https://www.amazon.com/dp/B00K3JQO9Y,https://www.amazon.com/details,Jennifer Bramen,10804 Kelmore St,"Culver City, CA 90230",United States',
+    '113-8285202-4396238,2026-10-16,58.97,USD,,Delivered October 18,"Lip Gloss Jelly",B08L186PH4,2,16,0,,https://www.amazon.com/dp/B08L186PH4,https://www.amazon.com/details,,,,',
+    '113-5245636-5823443,2026-10-15,33.36,USD,0,Delivered October 18,"Strapless Bra 36"" Band",B0BPHN8L6D,1,29.99,0,,https://www.amazon.com/dp/B0BPHN8L6D,https://www.amazon.com/details,Jennifer Bramen,10804 Kelmore St,"Culver City, CA 90230",United States',
   ].join('\n');
 
-  it('parses Amazon CSV rows', () => {
+  it('parses rows from the Order History Exporter format', () => {
     const rows = parseAmazonCsv(csvText);
 
-    expect(rows.length).toBeGreaterThan(0);
-    expect(rows[0]).toMatchObject({
-      date: '2026-05-08',
-      orderId: '113-2143912-8516210',
-      chargedAmount: -27.63,
-      itemNum: '1',
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toEqual({
+      date: '2026-10-16',
+      orderId: '113-8285202-4396238',
+      totalAmount: 58.97,
+      itemTitle: 'Sunscreen SPF 50+, 6 Fl Oz',
+      itemAsin: 'B00K3JQO9Y',
+      itemPrice: 14.99,
+      itemQuantity: 2,
     });
+    expect(rows[2].itemTitle).toBe('Strapless Bra 36" Band');
   });
 
-  it('builds distinct charges by date, order, and charged amount', () => {
-    const rows = parseAmazonCsv(csvText);
-    const charges = buildAmazonCharges(rows);
-
-    expect(charges.some((charge) => charge.chargedAmount === -27.63)).toBe(true);
-    expect(charges.some((charge) => charge.chargedAmount === -20.92)).toBe(true);
+  it('rejects CSVs missing required columns', () => {
+    expect(() => parseAmazonCsv('date,order_id\n2026-01-01,1')).toThrow(/missing required columns/);
   });
 
-  it('matches split charges to item subsets using allocated order totals', () => {
-    const rows = parseAmazonCsv(csvText);
-    const charges = buildAmazonCharges(rows);
-    const largerCharge = charges.find((charge) => charge.chargedAmount === -27.63);
-    const smallerCharge = charges.find((charge) => charge.chargedAmount === -20.92);
+  it('builds one charge per order with all of its items', () => {
+    const charges = buildAmazonCharges(parseAmazonCsv(csvText));
 
-    expect(largerCharge).toBeDefined();
-    expect(smallerCharge).toBeDefined();
-
-    const largerMatch = matchAmazonChargeItems(rows, largerCharge!);
-    const smallerMatch = matchAmazonChargeItems(rows, smallerCharge!);
-
-    expect(largerMatch?.matchedItems.map((item) => item.itemNum)).toEqual(['3']);
-    expect(smallerMatch?.matchedItems.map((item) => item.itemNum).sort()).toEqual(['1', '2']);
+    expect(charges).toHaveLength(2);
+    expect(charges[0]).toMatchObject({
+      date: '2026-10-16',
+      orderId: '113-8285202-4396238',
+      chargedAmount: 58.97,
+    });
+    expect(charges[0].items.map((item) => item.asin)).toEqual(['B00K3JQO9Y', 'B08L186PH4']);
+    expect(charges[1].items).toHaveLength(1);
   });
+});
 
-  it('matches every item row for a whole-order charge with multiple items', () => {
-    const multiItemCsv = [
-      'date,order_id,section,status,payment_method,charged_amount,merchant,order_placed,order_subtotal,order_shipping,order_tax,order_grand_total,item_num,item_title,item_asin,item_price,item_quantity,item_condition,item_sold_by',
-      '"May 12, 2026",113-3139360-4261804,Completed,Completed,Visa ****0158,-$44.48,,"May 12, 2026",$41.96,$2.99,$4.32,$44.48,1,"Shoe Cleaner Foam",B0DZ6QFXCB,$11.99,1,New,JILI DIRECT',
-      '"May 12, 2026",113-3139360-4261804,Completed,Completed,Visa ****0158,-$44.48,,"May 12, 2026",$41.96,$2.99,$4.32,$44.48,2,"Pumpkin Seed Protein Powder",B0F4RPJ23S,$29.97,1,New,Sunwarrior',
-    ].join('\n');
-    const rows = parseAmazonCsv(multiItemCsv);
-    const charge = buildAmazonCharges(rows)[0];
+describe('matchSplitCharge', () => {
+  const charge: AmazonCharge = {
+    date: '2026-09-12',
+    orderId: '111-9375319-3142639',
+    chargedAmount: 100,
+    items: [
+      { title: 'Tweezers', asin: 'A', price: 20, quantity: 1 },
+      { title: 'Whisk', asin: 'B', price: 30, quantity: 1 },
+      { title: 'Glucose monitor', asin: 'C', price: 40, quantity: 2 },
+    ],
+  };
 
-    const match = matchAmazonChargeItems(rows, charge);
-
-    expect(match?.matchedItems.map((item) => item.title)).toEqual([
-      'Shoe Cleaner Foam',
-      'Pumpkin Seed Protein Powder',
+  it('finds the unique set of transactions that sums to the order total and splits the items', () => {
+    // base total 130, ratio 100/130: Tweezers+Whisk -> 38.46, Monitor -> 61.54
+    const result = matchSplitCharge(charge, [
+      { id: 1, amount: -38.46 },
+      { id: 2, amount: -61.54 },
+      { id: 3, amount: -12.5 },
     ]);
+
+    expect(result).not.toBeNull();
+    const byId = new Map(result!.map((a) => [a.candidateId, a.items.map((i) => i.asin).sort()]));
+    expect(byId.get(1)).toEqual(['A', 'B']);
+    expect(byId.get(2)).toEqual(['C']);
+  });
+
+  it('returns null when no transactions add up to the total', () => {
+    expect(matchSplitCharge(charge, [{ id: 1, amount: 40 }, { id: 2, amount: 50 }])).toBeNull();
+  });
+
+  it('returns null when more than one set of transactions adds up to the total', () => {
+    expect(
+      matchSplitCharge(charge, [
+        { id: 1, amount: 40 },
+        { id: 2, amount: 60 },
+        { id: 3, amount: 30 },
+        { id: 4, amount: 70 },
+      ]),
+    ).toBeNull();
   });
 });

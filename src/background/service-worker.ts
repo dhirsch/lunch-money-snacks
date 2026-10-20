@@ -2,22 +2,27 @@ import { extensionApi } from '../utils/extension-api';
 import { getUserSettings, saveUserSettings, getMonthData } from '../storage/storage';
 import {
   getCategories,
+  getTags,
+  createTag,
   getTransactions,
   createTransactions,
   updateTransaction,
   type Transaction,
   type InsertTransaction,
 } from '../api/lunch-money-client';
-import { summarizeAmazonItems } from '../api/openrouter-client';
+import { guessSplitMatches, summarizeAmazonItems } from '../api/openrouter-client';
 import {
   buildAmazonCharges,
-  matchAmazonChargeItems,
+  matchSplitCharge,
   parseAmazonCsv,
+  type AmazonCharge,
   type AmazonItem,
 } from '../amazon/amazon-csv';
 import type { BudgetLineData, UserSettings } from '../storage/schema';
 
 const AMAZON_DATE_MATCH_WINDOW_DAYS = 5;
+const SPLIT_DATE_MATCH_WINDOW_DAYS = 14;
+const SUPPLEMENT_TAG_NAME = 'Supplements';
 
 extensionApi.action.onClicked.addListener(() => {
   extensionApi.runtime.openOptionsPage();
@@ -66,6 +71,17 @@ interface AmazonPreviewItem {
   itemTitles: string[];
   suggestedCategoryId: number | null;
   suggestedCategoryName: string | null;
+  isSupplement: boolean;
+  orderId: string;
+  matchType: AmazonMatchType;
+}
+
+type AmazonMatchType = 'exact' | 'split' | 'ai';
+
+interface PlannedAmazonUpdate {
+  tx: Transaction;
+  charge: AmazonCharge;
+  matchType: AmazonMatchType;
 }
 
 interface AmazonSkippedItem {
@@ -97,6 +113,7 @@ interface AmazonApplyUpdate {
   currentNotes: string | null;
   itemsText: string;
   categoryId?: number | null;
+  addSupplementTag?: boolean;
 }
 
 interface AmazonApplyResponse {
@@ -402,56 +419,129 @@ async function handleAmazonPreview(
       getCategories(settings.apiKey),
     ]);
 
+    const model = settings.openRouterModel || 'anthropic/claude-haiku-4.5';
     const amazonTransactions = transactions.filter(isAmazonTransaction);
     const previews: AmazonPreviewItem[] = [];
     const skippedItems: AmazonSkippedItem[] = [];
+    const planned: PlannedAmazonUpdate[] = [];
+    const claimed = new Set<number>();
+    const unmatched: AmazonCharge[] = [];
 
     for (const charge of charges) {
       const matchingTransactions = findAmazonCandidateTransactions(
         charge.date,
         charge.chargedAmount,
-        amazonTransactions,
+        amazonTransactions.filter((tx) => !claimed.has(tx.id)),
       );
-      if (matchingTransactions.length !== 1) {
+      if (matchingTransactions.length === 0) {
+        unmatched.push(charge);
+      } else if (matchingTransactions.length > 1) {
         skippedItems.push(
           toSkippedItem(
             charge,
-            matchingTransactions.length === 0
-              ? `No Lunch Money Amazon transaction matched this amount within ${AMAZON_DATE_MATCH_WINDOW_DAYS} days.`
-              : `Multiple Lunch Money Amazon transactions matched this amount within ${AMAZON_DATE_MATCH_WINDOW_DAYS} days.`,
+            `Multiple Lunch Money Amazon transactions matched this amount within ${AMAZON_DATE_MATCH_WINDOW_DAYS} days.`,
             matchingTransactions,
           ),
         );
+      } else {
+        claimed.add(matchingTransactions[0].id);
+        planned.push({ tx: matchingTransactions[0], charge, matchType: 'exact' });
+      }
+    }
+
+    // Orders with no single matching transaction may have been billed per shipment.
+    const splitReason = (charge: AmazonCharge, extra: string) =>
+      toSkippedItem(
+        charge,
+        `No Lunch Money Amazon transaction matched this amount within ${AMAZON_DATE_MATCH_WINDOW_DAYS} days. ${extra}`,
+      );
+    const splitPool = (charge: AmazonCharge) =>
+      amazonTransactions.filter(
+        (tx) =>
+          !claimed.has(tx.id) &&
+          !tx.notes?.includes('Items:') &&
+          daysBetween(tx.date, charge.date) <= SPLIT_DATE_MATCH_WINDOW_DAYS,
+      );
+
+    const stillUnmatched: AmazonCharge[] = [];
+    for (const charge of unmatched) {
+      const pool = splitPool(charge);
+      const assignments = matchSplitCharge(
+        charge,
+        pool.map((tx) => ({ id: tx.id, amount: Number(tx.amount) })),
+      );
+      if (!assignments) {
+        stillUnmatched.push(charge);
+        continue;
+      }
+      for (const assignment of assignments) {
+        const tx = pool.find((candidate) => candidate.id === assignment.candidateId)!;
+        claimed.add(tx.id);
+        planned.push({
+          tx,
+          charge: { ...charge, chargedAmount: Number(tx.amount), items: assignment.items },
+          matchType: 'split',
+        });
+      }
+    }
+
+    for (const charge of stillUnmatched) {
+      const pool = splitPool(charge);
+      if (pool.length < 2) {
+        skippedItems.push(splitReason(charge, 'Not enough nearby unmatched transactions to be a split charge.'));
         continue;
       }
 
-      const itemMatch = matchAmazonChargeItems(rows, charge);
-      if (!itemMatch) {
+      try {
+        const guesses = await guessSplitMatches(
+          settings.openRouterApiKey,
+          model,
+          {
+            orderId: charge.orderId,
+            date: charge.date,
+            total: Math.abs(charge.chargedAmount),
+            items: charge.items,
+          },
+          pool.map((tx) => ({ id: tx.id, date: tx.date, amount: Number(tx.amount), notes: tx.notes })),
+        );
+        if (guesses.length === 0) {
+          skippedItems.push(splitReason(charge, 'Could not match it to a set of split charges either.'));
+          continue;
+        }
+        for (const guess of guesses) {
+          const tx = pool.find((candidate) => candidate.id === guess.transactionId)!;
+          claimed.add(tx.id);
+          planned.push({
+            tx,
+            charge: { ...charge, chargedAmount: Number(tx.amount), items: guess.items },
+            matchType: 'ai',
+          });
+        }
+      } catch (error) {
         skippedItems.push(
-          toSkippedItem(
+          splitReason(
             charge,
-            'Could not map this charge amount to a unique set of items from the order.',
-            matchingTransactions,
+            `AI split matching failed: ${error instanceof Error ? error.message : String(error)}`,
           ),
         );
-        continue;
       }
+    }
 
-      const tx = matchingTransactions[0];
+    for (const { tx, charge, matchType } of planned) {
       let suggestion;
       try {
         suggestion = await summarizeAmazonItems(
           settings.openRouterApiKey,
-          settings.openRouterModel || 'anthropic/claude-haiku-4.5',
-          itemMatch.matchedItems as AmazonItem[],
+          model,
+          charge.items,
           categories,
         );
       } catch (error) {
         skippedItems.push(
           toSkippedItem(
-            { ...charge, items: itemMatch.matchedItems },
+            charge,
             `OpenRouter summarization failed: ${error instanceof Error ? error.message : String(error)}`,
-            matchingTransactions,
+            [tx],
           ),
         );
         continue;
@@ -464,9 +554,12 @@ async function handleAmazonPreview(
         payee: tx.payee,
         currentNotes: tx.notes,
         itemsText: suggestion.itemsText,
-        itemTitles: itemMatch.matchedItems.map((item) => item.title),
+        itemTitles: charge.items.map((item) => item.title),
         suggestedCategoryId: suggestion.categoryId,
         suggestedCategoryName: suggestion.categoryName,
+        isSupplement: suggestion.isSupplement,
+        orderId: charge.orderId,
+        matchType,
       });
     }
 
@@ -474,6 +567,14 @@ async function handleAmazonPreview(
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
+}
+
+async function getOrCreateSupplementTagId(apiKey: string): Promise<number> {
+  const tags = await getTags(apiKey);
+  const existing = tags.find(
+    (tag) => !tag.archived && tag.name.trim().toLowerCase() === SUPPLEMENT_TAG_NAME.toLowerCase(),
+  );
+  return (existing ?? (await createTag(apiKey, SUPPLEMENT_TAG_NAME))).id;
 }
 
 async function handleAmazonApply(
@@ -489,11 +590,17 @@ async function handleAmazonApply(
   }
 
   try {
+    const supplementTagId = updates.some((item) => item.addSupplementTag)
+      ? await getOrCreateSupplementTagId(settings.apiKey)
+      : null;
+
     let updated = 0;
     for (const item of updates) {
       await updateTransaction(settings.apiKey, item.transactionId, {
         notes: appendItemsNote(item.currentNotes, item.itemsText),
         category_id: item.categoryId ?? undefined,
+        additional_tag_ids:
+          item.addSupplementTag && supplementTagId !== null ? [supplementTagId] : undefined,
       });
       updated++;
     }

@@ -11,6 +11,9 @@ interface AmazonPreviewItem {
   itemTitles: string[];
   suggestedCategoryId: number | null;
   suggestedCategoryName: string | null;
+  isSupplement: boolean;
+  orderId: string;
+  matchType: 'exact' | 'split' | 'ai';
 }
 
 interface AmazonSkippedItem {
@@ -94,7 +97,14 @@ export function AmazonImport({ disabled, onMessage }: AmazonImportProps) {
       setPreviews(nextPreviews);
       setSkipped(response.data.skipped);
       setSkippedItems((response.data.skippedItems ?? []) as AmazonSkippedItem[]);
-      setSelectedIds(new Set(nextPreviews.map((preview) => preview.transactionId)));
+      // AI-guessed split matches are opt-in; everything else starts selected.
+      setSelectedIds(
+        new Set(
+          nextPreviews
+            .filter((preview) => preview.matchType !== 'ai')
+            .map((preview) => preview.transactionId),
+        ),
+      );
       setCategoryIds(
         new Set(
           nextPreviews
@@ -131,6 +141,7 @@ export function AmazonImport({ disabled, onMessage }: AmazonImportProps) {
             categoryId: categoryIds.has(preview.transactionId)
               ? preview.suggestedCategoryId
               : null,
+            addSupplementTag: preview.isSupplement,
           })),
         },
       });
@@ -270,7 +281,16 @@ export function AmazonImport({ disabled, onMessage }: AmazonImportProps) {
                   {preview.date} · {preview.payee} · {formatAmount(preview.amount)}
                 </span>
               </label>
+              {preview.matchType !== 'exact' && (
+                <div className="amazon-preview__memo">
+                  {preview.matchType === 'ai' ? 'AI-guessed split charge' : 'Split charge'} of order{' '}
+                  {preview.orderId}
+                </div>
+              )}
               <div className="amazon-preview__memo">Items: {preview.itemsText}</div>
+              {preview.isSupplement && (
+                <div className="amazon-preview__memo">Tag: Supplements</div>
+              )}
               {preview.suggestedCategoryName && (
                 <label className="checkbox-label amazon-preview__category">
                   <input

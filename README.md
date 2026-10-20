@@ -13,7 +13,21 @@ A Chrome extension that enhances the Lunch Money budget view by allowing users t
 
 ## Installation
 
-### Development
+#### Amazon Order Import
+
+The settings page can add item summaries to Amazon transactions in Lunch Money from an Amazon order history CSV.
+
+1. Install the [Order History Exporter for Amazon](https://chromewebstore.google.com/detail/order-history-exporter-fo/fipfbjgikgcggcebnefmamgemoehfgof?hl=en) Chrome extension and use it to export your orders as a CSV. **This is the only supported CSV format.**
+2. In the extension settings, choose the month, select the CSV, and click "Preview Updates".
+3. Review the suggested memos and categories, then click "Apply Selected".
+
+Notes:
+
+- Each order is first matched to a single Lunch Money Amazon transaction by its Total Amount (within 5 days of the order date).
+- Orders Amazon billed in several charges are matched in two more steps: first by finding the one set of nearby unmatched transactions that adds up to the order total and splitting the items across them, then, for what's left, by asking the AI model to guess. Split matches are labeled in the preview; AI-guessed ones start unchecked so you can review them.
+- Supplements and vitamins are categorized as Food and Grocery and tagged `Supplements` (the tag is created if it doesn't exist).
+
+## Development
 
 1. Clone the repository:
    ```bash
